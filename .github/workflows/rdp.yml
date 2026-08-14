@@ -18,23 +18,31 @@ jobs:
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 0
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-        Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd123!" -Force)
+        net user runneradmin P@ssw0rd123!
+        net localgroup administrators runneradmin /add
 
-    - name: Start Tunnel & Show URL
+    - name: Start Cloudflare Tunnel
+      id: tunnel
       run: |
-        Write-Host "Starting Cloudflare Tunnel..."
-        $tunnel = Start-Process -FilePath "cloudflared.exe" -ArgumentList "tunnel --url tcp://localhost:3389" -PassThru -WindowStyle Normal
-        Start-Sleep -Seconds 15
+        echo "Starting Cloudflare Tunnel..."
+        Start-Process -FilePath "cloudflared.exe" -ArgumentList "tunnel --url tcp://localhost:3389" -WindowStyle Hidden
+        Start-Sleep -Seconds 20
+        echo "Tunnel started. Check logs for URL."
+
+    - name: Display Connection Info
+      run: |
         Write-Host "=================================================="
-        Write-Host "Connection Info:"
+        Write-Host "✅ RDP IS READY!"
         Write-Host "Username: runneradmin"
         Write-Host "Password: P@ssw0rd123!"
         Write-Host "=================================================="
-        Write-Host "Check the logs above for the tunnel URL"
-        Write-Host "(look for 'https://<random>.trycloudflare.com')"
+        Write-Host "Look for the tunnel URL in the logs above."
+        Write-Host "It will look like: https://xxxx.trycloudflare.com"
         Write-Host "=================================================="
-        Wait-Process -Id $tunnel.Id
 
     - name: Keep Alive
       run: |
-        while ($true) { Start-Sleep -Seconds 60 }
+        while ($true) { 
+          Write-Host "Keep alive... (press Ctrl+C to stop)"
+          Start-Sleep -Seconds 300
+        }
