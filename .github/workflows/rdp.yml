@@ -7,14 +7,13 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-      - name: 1. Download Ngrok
+      - name: 1. Install Ngrok via Choco
         run: |
-          Invoke-WebRequest https://bin.equinox.io/c/b4Pvu3qaWcd/ngrok-stable-windows-amd64.zip -OutFile ngrok.zip
-          Expand-Archive ngrok.zip -DestinationPath .
+          choco install ngrok -y
 
       - name: 2. Authenticate Ngrok
         run: |
-          .\ngrok.exe authtoken ${{ secrets.NGROK_AUTH_TOKEN }}
+          ngrok config add-authtoken ${{ secrets.NGROK_AUTH_TOKEN }}
 
       - name: 3. Enable Remote Desktop (RDP)
         run: |
@@ -24,7 +23,7 @@ jobs:
 
       - name: 4. Start Tunnel
         run: |
-          Start-Process -FilePath ".\ngrok.exe" -ArgumentList "tcp 3389"
+          Start-Process -FilePath "ngrok" -ArgumentList "tcp 3389"
           Start-Sleep -Seconds 5
 
       - name: 5. Display Connection Information
@@ -46,4 +45,3 @@ jobs:
               Start-Sleep -Seconds 60
               $i++
           }
-
