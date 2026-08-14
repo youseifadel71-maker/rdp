@@ -1,4 +1,4 @@
-name: Windows RDP Server
+name: Windows RDP via Cloudflare Tunnel
 
 on:
   workflow_dispatch:
@@ -6,46 +6,34 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    timeout-minutes: 9999
+
     steps:
-      - name: 1. Install Ngrok via Choco
-        run: choco install ngrok -y
+    - name: Install Cloudflared
+      run: |
+        choco install cloudflared -y
 
-      - name: 2. Authenticate Ngrok
-        run: ngrok config add-authtoken ${{ secrets.NGROK_AUTH_TOKEN }}
+    - name: Enable RDP
+      run: |
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 0
+        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+        Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd123!" -Force)
 
-      - name: 3. Enable Remote Desktop (RDP)
-        run: |
-          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
-          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-          Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "${{ secrets.RDP_PASSWORD }}" -Force)
+    - name: Start Tunnel
+      run: |
+        Start-Process -FilePath "cloudflared.exe" -ArgumentList "tunnel --url tcp://localhost:3389" -WindowStyle Hidden
 
-      - name: 4. Start Tunnel & Record Logs
-        run: |
-          Start-Process -FilePath "ngrok.exe" -ArgumentList "tcp 3389 --log=ngrok.log" -WindowStyle Hidden
-          Start-Sleep -Seconds 10
-          
-      - name: 5. Display Connection Information
-        run: |
-          try {
-              $response = Invoke-RestMethod -Uri http://127.0.0.1:4040/api/tunnels -ErrorAction Stop
-              $publicUrl = $response.tunnels[0].public_url
-              Write-Host "==================================================" -ForegroundColor Green
-              Write-Host "         RDP SERVER READY TO CONNECT              " -ForegroundColor Yellow
-              Write-Host "==================================================" -ForegroundColor Green
-              Write-Host "Address:  $publicUrl" -ForegroundColor Cyan
-              Write-Host "Username: runneradmin" -ForegroundColor Cyan
-              Write-Host "Password: ${{ secrets.RDP_PASSWORD }}" -ForegroundColor Cyan
-              Write-Host "==================================================" -ForegroundColor Green
-          } catch {
-              Write-Host "حدث خطأ أثناء الاتصال! نقوم الآن بعرض سبب الرفض من Ngrok:" -ForegroundColor Red
-              Write-Host "==================================================" -ForegroundColor Red
-              Get-Content ngrok.log -Tail 15
-              Write-Host "==================================================" -ForegroundColor Red
-              exit 1
-          }
-
-      - name: 6. Keep Alive Loop
-        run: |
-          while ($true) {
-              Start-Sleep -Seconds 60
-          }
+    - name: Keep Alive & Show URL
+      run: |
+        Write-Host "=================================================="
+        Write-Host "Connection Info:"
+        Write-Host "Username: runneradmin"
+        Write-Host "Password: P@ssw0rd123!"
+        Write-Host "=================================================="
+        Write-Host "Checking tunnel URL..."
+        timeout /t 15
+        Write-Host "Check the logs above for the tunnel URL"
+        Write-Host "(look for 'https://<random>.trycloudflare.com')"
+        Write-Host "=================================================="
+        while ($true) { Start-Sleep -Seconds 60 }
