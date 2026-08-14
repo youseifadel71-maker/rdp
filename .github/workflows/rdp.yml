@@ -8,12 +8,10 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: 1. Install Ngrok via Choco
-        run: |
-          choco install ngrok -y
+        run: choco install ngrok -y
 
       - name: 2. Authenticate Ngrok
-        run: |
-          ngrok config add-authtoken ${{ secrets.NGROK_AUTH_TOKEN }}
+        run: ngrok config add-authtoken ${{ secrets.NGROK_AUTH_TOKEN }}
 
       - name: 3. Enable Remote Desktop (RDP)
         run: |
@@ -21,40 +19,30 @@ jobs:
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
           Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "${{ secrets.RDP_PASSWORD }}" -Force)
 
-      - name: 4. Start Tunnel
+      - name: 4. Start Tunnel (Hidden Process)
         run: |
-          cmd /c start ngrok tcp 3389
+          Start-Process -FilePath "ngrok.exe" -ArgumentList "tcp 3389" -WindowStyle Hidden
+          Start-Sleep -Seconds 7
           
       - name: 5. Display Connection Information
         run: |
-          $i = 0
-          while($i -lt 15) {
-              try {
-                  $response = Invoke-RestMethod -Uri http://127.0.0.1:4040/api/tunnels -ErrorAction Stop
-                  if ($response.tunnels.Count -gt 0) {
-                      $publicUrl = $response.tunnels[0].public_url
-                      Write-Host "==================================================" -ForegroundColor Green
-                      Write-Host "         RDP SERVER READY TO CONNECT              " -ForegroundColor Yellow
-                      Write-Host "==================================================" -ForegroundColor Green
-                      Write-Host "Address:  $publicUrl" -ForegroundColor Cyan
-                      Write-Host "Username: runneradmin" -ForegroundColor Cyan
-                      Write-Host "Password: ${{ secrets.RDP_PASSWORD }}" -ForegroundColor Cyan
-                      Write-Host "==================================================" -ForegroundColor Green
-                      exit 0
-                  }
-              } catch {
-                  Write-Host "جاري الاتصال بسيرفر Ngrok، يرجى الانتظار..." -ForegroundColor Yellow
-              }
-              Start-Sleep -Seconds 3
-              $i++
+          try {
+              $response = Invoke-RestMethod -Uri http://127.0.0.1:4040/api/tunnels -ErrorAction Stop
+              $publicUrl = $response.tunnels[0].public_url
+              Write-Host "==================================================" -ForegroundColor Green
+              Write-Host "         RDP SERVER READY TO CONNECT              " -ForegroundColor Yellow
+              Write-Host "==================================================" -ForegroundColor Green
+              Write-Host "Address:  $publicUrl" -ForegroundColor Cyan
+              Write-Host "Username: runneradmin" -ForegroundColor Cyan
+              Write-Host "Password: ${{ secrets.RDP_PASSWORD }}" -ForegroundColor Cyan
+              Write-Host "==================================================" -ForegroundColor Green
+          } catch {
+              Write-Host "فشل الحصول على الرابط! تأكد من أن رمز Ngrok صحيح وأن حسابك غير محظور." -ForegroundColor Red
+              exit 1
           }
-          Write-Host "فشل الاتصال بـ Ngrok. تأكد من صحة التوكن الخاص بك." -ForegroundColor Red
-          exit 1
 
       - name: 6. Keep Alive Loop
         run: |
-          $i = 0
-          while ($i -lt 360) {
+          while ($true) {
               Start-Sleep -Seconds 60
-              $i++
           }
