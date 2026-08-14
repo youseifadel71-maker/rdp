@@ -23,20 +23,33 @@ jobs:
 
       - name: 4. Start Tunnel
         run: |
-          Start-Process -FilePath "ngrok" -ArgumentList "tcp 3389"
-          Start-Sleep -Seconds 5
-
+          cmd /c start ngrok tcp 3389
+          
       - name: 5. Display Connection Information
         run: |
-          $response = Invoke-RestMethod -Uri http://127.0.0.1:4040/api/tunnels
-          $publicUrl = $response.tunnels[0].public_url
-          Write-Host "==================================================" -ForegroundColor Green
-          Write-Host "         RDP SERVER READY TO CONNECT              " -ForegroundColor Yellow
-          Write-Host "==================================================" -ForegroundColor Green
-          Write-Host "Address:  $publicUrl" -ForegroundColor Cyan
-          Write-Host "Username: runneradmin" -ForegroundColor Cyan
-          Write-Host "Password: ${{ secrets.RDP_PASSWORD }}" -ForegroundColor Cyan
-          Write-Host "==================================================" -ForegroundColor Green
+          $i = 0
+          while($i -lt 15) {
+              try {
+                  $response = Invoke-RestMethod -Uri http://127.0.0.1:4040/api/tunnels -ErrorAction Stop
+                  if ($response.tunnels.Count -gt 0) {
+                      $publicUrl = $response.tunnels[0].public_url
+                      Write-Host "==================================================" -ForegroundColor Green
+                      Write-Host "         RDP SERVER READY TO CONNECT              " -ForegroundColor Yellow
+                      Write-Host "==================================================" -ForegroundColor Green
+                      Write-Host "Address:  $publicUrl" -ForegroundColor Cyan
+                      Write-Host "Username: runneradmin" -ForegroundColor Cyan
+                      Write-Host "Password: ${{ secrets.RDP_PASSWORD }}" -ForegroundColor Cyan
+                      Write-Host "==================================================" -ForegroundColor Green
+                      exit 0
+                  }
+              } catch {
+                  Write-Host "جاري الاتصال بسيرفر Ngrok، يرجى الانتظار..." -ForegroundColor Yellow
+              }
+              Start-Sleep -Seconds 3
+              $i++
+          }
+          Write-Host "فشل الاتصال بـ Ngrok. تأكد من صحة التوكن الخاص بك." -ForegroundColor Red
+          exit 1
 
       - name: 6. Keep Alive Loop
         run: |
