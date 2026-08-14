@@ -20,20 +20,21 @@ jobs:
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
         Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd123!" -Force)
 
-    - name: Start Tunnel
+    - name: Start Tunnel & Show URL
       run: |
-        Start-Process -FilePath "cloudflared.exe" -ArgumentList "tunnel --url tcp://localhost:3389" -WindowStyle Hidden
-
-    - name: Keep Alive & Show URL
-      run: |
+        Write-Host "Starting Cloudflare Tunnel..."
+        $tunnel = Start-Process -FilePath "cloudflared.exe" -ArgumentList "tunnel --url tcp://localhost:3389" -PassThru -WindowStyle Normal
+        Start-Sleep -Seconds 15
         Write-Host "=================================================="
         Write-Host "Connection Info:"
         Write-Host "Username: runneradmin"
         Write-Host "Password: P@ssw0rd123!"
         Write-Host "=================================================="
-        Write-Host "Checking tunnel URL..."
-        timeout /t 15
         Write-Host "Check the logs above for the tunnel URL"
         Write-Host "(look for 'https://<random>.trycloudflare.com')"
         Write-Host "=================================================="
+        Wait-Process -Id $tunnel.Id
+
+    - name: Keep Alive
+      run: |
         while ($true) { Start-Sleep -Seconds 60 }
