@@ -19,10 +19,10 @@ jobs:
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
           Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "${{ secrets.RDP_PASSWORD }}" -Force)
 
-      - name: 4. Start Tunnel (Hidden Process)
+      - name: 4. Start Tunnel & Record Logs
         run: |
-          Start-Process -FilePath "ngrok.exe" -ArgumentList "tcp 3389" -WindowStyle Hidden
-          Start-Sleep -Seconds 7
+          Start-Process -FilePath "ngrok.exe" -ArgumentList "tcp 3389 --log=ngrok.log" -WindowStyle Hidden
+          Start-Sleep -Seconds 10
           
       - name: 5. Display Connection Information
         run: |
@@ -37,7 +37,10 @@ jobs:
               Write-Host "Password: ${{ secrets.RDP_PASSWORD }}" -ForegroundColor Cyan
               Write-Host "==================================================" -ForegroundColor Green
           } catch {
-              Write-Host "فشل الحصول على الرابط! تأكد من أن رمز Ngrok صحيح وأن حسابك غير محظور." -ForegroundColor Red
+              Write-Host "حدث خطأ أثناء الاتصال! نقوم الآن بعرض سبب الرفض من Ngrok:" -ForegroundColor Red
+              Write-Host "==================================================" -ForegroundColor Red
+              Get-Content ngrok.log -Tail 15
+              Write-Host "==================================================" -ForegroundColor Red
               exit 1
           }
 
