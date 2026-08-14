@@ -19,7 +19,6 @@ jobs:
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 0
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
         net user runneradmin P@ssw0rd123!
-        net localgroup administrators runneradmin /add
 
     - name: Start Cloudflare Tunnel
       id: tunnel
